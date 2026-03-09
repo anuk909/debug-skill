@@ -104,15 +104,22 @@ func (c *DAPClient) AttachRequestWithArgs(args map[string]any) error {
 	return c.send(request)
 }
 
+// Breakpoint holds a line number and an optional condition expression.
+type Breakpoint struct {
+	Line      int
+	Condition string
+}
+
 // SetBreakpointsRequest sends a 'setBreakpoints' request.
-func (c *DAPClient) SetBreakpointsRequest(file string, lines []int) error {
+func (c *DAPClient) SetBreakpointsRequest(file string, bps []Breakpoint) error {
 	request := &godap.SetBreakpointsRequest{Request: *c.newRequest("setBreakpoints")}
 	request.Arguments = godap.SetBreakpointsArguments{
 		Source:      godap.Source{Name: file, Path: file},
-		Breakpoints: make([]godap.SourceBreakpoint, len(lines)),
+		Breakpoints: make([]godap.SourceBreakpoint, len(bps)),
 	}
-	for i, l := range lines {
-		request.Arguments.Breakpoints[i].Line = l
+	for i, bp := range bps {
+		request.Arguments.Breakpoints[i].Line = bp.Line
+		request.Arguments.Breakpoints[i].Condition = bp.Condition
 	}
 	return c.send(request)
 }

@@ -426,8 +426,8 @@ func (d *Daemon) handleDebug(rawArgs json.RawMessage) *Response {
 	d.sessionBreaks = args.Breaks
 	d.sessionExceptionFilters = args.ExceptionFilters
 	breaksByFile := groupBreakpoints(args.Breaks)
-	for file, lines := range breaksByFile {
-		if err := d.client.SetBreakpointsRequest(file, lines); err != nil {
+	for file, bps := range breaksByFile {
+		if err := d.client.SetBreakpointsRequest(file, bps); err != nil {
 			d.stopSession()
 			return &Response{Status: "error", Error: fmt.Sprintf("set breakpoints: %v", err)}
 		}
@@ -725,8 +725,8 @@ func (d *Daemon) setupChildSession(config map[string]any) error {
 
 	// Re-send breakpoints on child session
 	breaksByFile := groupBreakpoints(d.sessionBreaks)
-	for file, lines := range breaksByFile {
-		_ = childClient.SetBreakpointsRequest(file, lines)
+	for file, bps := range breaksByFile {
+		_ = childClient.SetBreakpointsRequest(file, bps)
 	}
 	childExceptionFilters := d.sessionExceptionFilters
 	if childExceptionFilters == nil {
@@ -763,12 +763,13 @@ func (d *Daemon) awaitStopResult() *Response {
 
 // --- Helpers ---
 
-// groupBreakpoints parses "file:line" strings and groups by file.
-func groupBreakpoints(breaks []string) map[string][]int {
-	result := make(map[string][]int)
+// groupBreakpoints parses "file:line" or "file:line:condition" strings and groups by file.
+func groupBreakpoints(breaks []string) map[string][]Breakpoint {
+	result := make(map[string][]Breakpoint)
 	for _, b := range breaks {
-		parts := strings.SplitN(b, ":", 2)
-		if len(parts) != 2 {
+		// Split into at most 3 parts: file, line, condition (condition may contain colons)
+		parts := strings.SplitN(b, ":", 3)
+		if len(parts) < 2 {
 			continue
 		}
 		line, err := strconv.Atoi(parts[1])
@@ -780,7 +781,11 @@ func groupBreakpoints(breaks []string) map[string][]int {
 		if abs, err := filepath.Abs(file); err == nil {
 			file = abs
 		}
-		result[file] = append(result[file], line)
+		bp := Breakpoint{Line: line}
+		if len(parts) == 3 {
+			bp.Condition = parts[2]
+		}
+		result[file] = append(result[file], bp)
 	}
 	return result
 }

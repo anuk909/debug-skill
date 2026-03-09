@@ -85,6 +85,14 @@ observation will confirm or disprove it. No hypothesis yet? Bisect with two brea
 - Exception at line 80? Root cause is upstream — start earlier
 - Uncertain? Bisect: `--break f:20 --break f:60` — wrong state before or after halves the search space
 
+**Conditional breakpoints** — stop only when an expression is true:
+```bash
+dap debug app.py --break app.py:42:x > 100
+dap debug app.py --break app.py:15:user.role == "admin"
+dap debug app.py --break app.py:8:len(items) == 0
+```
+Use `file:line:condition` syntax. The condition is evaluated in the stopped frame's scope.
+
 ## Navigating Execution
 
 At each stop, choose how to advance based on what you suspect:

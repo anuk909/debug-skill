@@ -73,9 +73,6 @@ dap debug --attach localhost:5679 --backend debugpy --break mymodule.py:42
 dap debug --attach localhost:5679 --backend debugpy --break /abs/path/to/mymodule.py:42
 ```
 
-**Conditional breakpoints are not supported.**
-`--break` only accepts `file:line`. Workaround: add a temporary `if <condition>: pass` and break on that line.
-
 **Multiprocessing / subprocess workers cannot be debugged directly.**
 `dap` attaches to the main process only — breakpoints in spawned workers will never be hit and the session will hang.
 Workaround: start each worker with `debugpy --listen <port>` and attach a separate `dap` session per worker.

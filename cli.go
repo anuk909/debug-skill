@@ -14,7 +14,7 @@ type breakpointFlag []string
 
 func (b *breakpointFlag) String() string     { return strings.Join(*b, ", ") }
 func (b *breakpointFlag) Set(v string) error { *b = append(*b, v); return nil }
-func (b *breakpointFlag) Type() string       { return "file:line" }
+func (b *breakpointFlag) Type() string       { return "file:line[:condition]" }
 
 // globalFlags holds flags shared across commands.
 var globalFlags struct {
@@ -126,6 +126,7 @@ func newDebugCmd() *cobra.Command {
 
 Backend is auto-detected from the script extension. Override with --backend.
 Use --break file:line to set breakpoints (repeatable). Use --stop-on-entry to stop at the first line.
+Use --break file:line:condition to set a conditional breakpoint (stops only when the expression is true).
 Use -- to pass arguments to the debugged program.
 Use --attach to connect to an already-running remote DAP server (skips local spawn,
 requires --backend).
@@ -181,7 +182,7 @@ Blocks until the program hits a breakpoint or exits, then returns auto-context.`
 		},
 	}
 
-	cmd.Flags().Var(&breaks, "break", "Add a breakpoint (repeatable: --break a.py:10 --break b.py:20)")
+	cmd.Flags().Var(&breaks, "break", "Add a breakpoint (repeatable: --break a.py:10 --break b.py:20).\nOptional condition: --break a.py:10:x>5 stops only when x>5.")
 	cmd.Flags().StringVar(&attach, "attach", "", "Attach to remote debugger at host:port")
 	cmd.Flags().StringVar(&backend, "backend", "", "Debugger backend (debugpy, dlv, js-debug, lldb-dap); auto-detected from file extension")
 	cmd.Flags().BoolVar(&stopOnEntry, "stop-on-entry", false, "Stop at first line")

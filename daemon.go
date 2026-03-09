@@ -297,6 +297,8 @@ func (d *Daemon) dispatch(req Request) *Response {
 		return d.handleContext(req.Args)
 	case "eval":
 		return d.handleEval(req.Args)
+	case "break":
+		return d.handleBreak(req.Args)
 	case "output":
 		return d.handleOutput()
 	case "stop":
@@ -591,6 +593,52 @@ func (d *Daemon) handleEval(rawArgs json.RawMessage) *Response {
 			return &Response{Status: "ok", Data: &ContextResult{EvalResult: &EvalResult{Value: "(no result)"}}}
 		}
 	}
+}
+
+// BreakArgs holds the arguments for the "break" command.
+type BreakArgs struct {
+	Breaks []string `json:"breaks"`
+}
+
+// handleBreak adds breakpoints to the active session without restarting.
+// DAP's setBreakpoints is file-scoped and replaces, so we merge new breakpoints
+// with existing ones per file before sending.
+func (d *Daemon) handleBreak(rawArgs json.RawMessage) *Response {
+	if d.client == nil {
+		return &Response{Status: "error", Error: "no active debug session — run 'dap debug' first"}
+	}
+
+	var args BreakArgs
+	if err := json.Unmarshal(rawArgs, &args); err != nil {
+		return &Response{Status: "error", Error: fmt.Sprintf("invalid args: %v", err)}
+	}
+	if len(args.Breaks) == 0 {
+		return &Response{Status: "error", Error: "no breakpoints specified"}
+	}
+
+	// Merge new breakpoints into session state, deduplicating by "file:line".
+	existing := make(map[string]struct{})
+	for _, b := range d.sessionBreaks {
+		existing[b] = struct{}{}
+	}
+	for _, b := range args.Breaks {
+		if _, dup := existing[b]; !dup {
+			d.sessionBreaks = append(d.sessionBreaks, b)
+			existing[b] = struct{}{}
+		}
+	}
+
+	// Re-send all breakpoints for each affected file (DAP replaces per file).
+	newByFile := groupBreakpoints(args.Breaks)
+	allByFile := groupBreakpoints(d.sessionBreaks)
+	for file := range newByFile {
+		bps := allByFile[file]
+		if err := d.client.SetBreakpointsRequest(file, bps); err != nil {
+			return &Response{Status: "error", Error: fmt.Sprintf("set breakpoints: %v", err)}
+		}
+	}
+
+	return &Response{Status: "ok"}
 }
 
 func (d *Daemon) handleOutput() *Response {

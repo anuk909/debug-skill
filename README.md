@@ -98,6 +98,7 @@ Every command returns **full context automatically**: location, source, locals, 
 | Command                       | Description                                     |
 |-------------------------------|-------------------------------------------------|
 | `dap debug <script>`          | Start debugging (local or `--attach host:port`) |
+| `dap break --break file:line` | Add breakpoints to the active session           |
 | `dap stop`                    | End session                                     |
 | `dap step [in\|out\|over]`    | Step (default: over)                            |
 | `dap continue`                | Resume execution                                |

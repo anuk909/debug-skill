@@ -88,6 +88,7 @@ Best practices:
 
 	root.AddCommand(
 		newDebugCmd(),
+		newBreakCmd(),
 		newStopCmd(),
 		newStepCmd(),
 		newContinueCmd(),
@@ -336,6 +337,40 @@ Use --frame to evaluate in a parent frame's scope.`,
 		},
 	}
 	cmd.Flags().IntVar(&frame, "frame", 0, "Stack frame for evaluation context")
+	return cmd
+}
+
+func newBreakCmd() *cobra.Command {
+	var breaks breakpointFlag
+	cmd := &cobra.Command{
+		Use:   "break",
+		Short: "Add breakpoints to the active session without restarting",
+		Long: `Add one or more breakpoints to an already-running debug session.
+
+Supports the same file:line[:condition] syntax as 'dap debug --break'.
+Existing breakpoints are preserved — only the new ones are added.
+Duplicate breakpoints (same file and line) are silently ignored.`,
+		Example: `  dap break app.py:55
+  dap break app.py:55:x > 10
+  dap break app.py:55 --break app.py:80
+  dap break handler.py:30 --session myapp`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(breaks) == 0 {
+				return fmt.Errorf("specify at least one breakpoint with --break file:line")
+			}
+			rawArgs, _ := json.Marshal(BreakArgs{Breaks: []string(breaks)})
+			resp, err := SendCommand(globalFlags.socketPath, &Request{Command: "break", Args: rawArgs})
+			if err != nil {
+				return noDaemonError(err)
+			}
+			fmt.Print(FormatResponse(resp, globalFlags.jsonOutput))
+			if resp.Status == "error" {
+				os.Exit(1)
+			}
+			return nil
+		},
+	}
+	cmd.Flags().Var(&breaks, "break", "Breakpoint to add (repeatable: --break file:line[:condition])")
 	return cmd
 }
 

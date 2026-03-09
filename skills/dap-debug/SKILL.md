@@ -31,7 +31,15 @@ Choose your starting strategy based on what you know:
 **Session isolation:** `--session <name>` keeps concurrent agents from interfering.
 `$CLAUDE_SESSION_ID` is injected by startup hooks; use a short descriptive name as fallback (e.g. `--session myapp`).
 
-Run `dap debug --help` for all flags, backends, and examples.
+**Adding breakpoints mid-session** — no need to restart:
+```bash
+dap break --break app.py:55
+dap break --break app.py:55:x > 10   # conditional
+dap break --break app.py:55 --break app.py:80   # multiple at once
+```
+Existing breakpoints are preserved. Use this when you stop somewhere and realise you need to pause elsewhere next.
+
+Run `dap debug --help` or `dap break --help` for all flags.
 
 ## The Debugging Mindset
 
